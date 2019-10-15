@@ -1,0 +1,145 @@
+---
+title: "Econometrics_FinalProject"
+author: "David Hua; Gordon Wang"
+date: "May 12, 2018"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+
+# 73-274 Econometrics I Final Project
+
+# Introduction
+
+Doctors have worried about low infant birthweight for many years because it is an important indicator of poorer overall health. It is generally believed that a mother's actions during pregnancy can greatly affect infant birthweight. We are especially interested in whether mother's smoking during pregancy affects a baby's birthweight after controlling for other factors such as mother's attributes and other behaviors during pregnancy. 
+
+
+# Data Analysis
+
+The dataset we analyzed contains 3000 observations and 12 different variables. The two main variables we are focusing on are birthweight, the birth weight of the infant in grams, and smoker, an indicator equal to 1 if the mother smoked during pregnancy and 0 otherwise.
+
+We begin by doing simple univariate EDA on the data. We find that the distribution of birthweight is slightly left-skewed with a long left tail, indicating some low values are possible outliers. We also find that many more mothers, 2418, did not smoke during pregancy, versus 582 who did. In addition, we perform bivariate EDA, and speculate from the boxplot result that mothers' smoking has a negative relationship with birthweight.
+
+```{r, echo = FALSE, fig.height = 3, fig.width = 6}
+# Read in data
+library(foreign)
+bw.data = read.dta("birthweight_smoking.dta")
+
+# 1-D EDA on Birthweight and Smoker, the main variables of interest
+par(mfrow = c(1, 3))
+
+# Birthweight
+hist(bw.data$birthweight, main = "Distribution of Infant's Birthweight", xlab = "Birthweight of Infant (g)", ylab = "Frequency", col = "red")
+
+# Smoker
+smoker_categories = table(as.factor(bw.data$smoker))
+names(smoker_categories) = c("Didn't Smoke", "Smoked")
+#smoker_categories
+barplot(smoker_categories, main = "Barplot of Mother Smoking Variable", xlab = "Smoked During Pregnancy", ylab = "Frequency")
+
+# 2D EDA 
+boxplot(bw.data$birthweight ~ bw.data$smoker, names = c("Didn't Smoke", "Smoked"), main = "Birthweight vs Smoker", xlab = "Smoker", ylab = "Birthweight (g)", col = "slategray4")
+```
+
+
+First, we will regress birthweight on the main x variable of interest (smoker), without controlling for other factors. 
+
+```{r, echo = FALSE}
+# Regressing Birthweight on Smoker
+model1 = lm(birthweight ~ smoker, data = bw.data)
+summary(model1)
+```
+
+Right away, we can see that smoker seems to have a large negative effect of 253.23 on birthweight on average, since its slope coefficient has a t-value of -9.396 with a p-value of less than 2e-16, indicating significance at 5% and 10% levels. However, we need to account for other factors, evident from the model's small multiple R-squared value of 0.0286.
+
+
+We then run a regression controlling for other factors. Note that we will not include tripre0 to avoid the dummy variable trap caused by perfect collinearity between tripre0 and tripre1, tripre2, and tripre3. Also, because of redundancy between alcohol and drinks, we choose to not include alcohol since drinks gives strictly more information. 
+
+```{r, echo = FALSE, results = "hide"}
+# Fit full model without redundacies and perfect collinearity
+model2 = lm(birthweight ~.-tripre0-alcohol,data= bw.data)
+summary(model2)
+```
+
+From the regression summary, we find that under a 5% signifiance level, based on the t-test statistics, the influential predictors of birthweight are nprevist, tripre2, tripre3, smoker, and unmarried. 
+
+Interestingly, tripre1 does not have a significant effect. However, we find high correlation among the tripre indicators, since tripre1, tripre2, and tripre3 have high variance inflation factors of 18.62, 14.92, and 4.23, respectively. To decide whether to drop or keep these three variables, we run a F-test for their joint significance. For our test, we have $H_{0}$ : $\beta_{tripre1}$ = 0, $\beta_{tripre2}$ = 0, $\beta_{tripre3}$ = 0 and our $H_{A}$ is that $H_{0}$ is false. The F-statistic's distribution under the null is the F random variable with (q = 3, n-k-1 = 290) degrees of freedom. Our result is a F-statistic of 5.2812 and p-value of 0.001244, so we reject $H_{0}$ at the 5% significance level, and conclude that tripre1, tripre2, and tripre3 are jointly significant in the model and shouldn't be dropped.
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE, results = "hide"}
+# Check variance inflation factors of model
+library(car)
+vif(model2)
+
+# Fit model without highly correlated predicters
+model.reduced = lm(birthweight ~.-tripre0-alcohol-tripre1-tripre2-tripre3,data = bw.data)
+
+# Test for joint significance of tripre1, tripre2, and tripre3
+anova(model.reduced, model2, test = "F")
+```
+
+We then try to improve our model by dropping the individually insignificant variables of educ, age, and drinks. However, we need to justify their exclusion with another F-test for the joint significance of the variables. Our test has $H_{0}$ : $\beta_{educ}$ = 0, $\beta_{age}$ = 0, $\beta_{drinks}$ = 0, and $H_{A}$ : $H_{0}$ is false. The F-statistic's distribution under the null is the F random variable with (q = 3, n-k-1 = 290) degrees of freedom. With a result of a F-statistic of 0.3128 and p-value of 0.8162, we fail to reject $H_{0}$ at both 5% and 10% significance levels. Thus, the three variables aren't jointly significant in predicting birthweight and can be dropped.
+
+```{r, echo = FALSE}
+# Drop insignificant predictors from model
+model3 = lm(birthweight ~ smoker + unmarried + nprevist + tripre1 + tripre2 + tripre3, data = bw.data)
+
+# Compare Model3 to Model2 using F-test
+anova(model3, model2, test = "F")
+```
+
+In order to fine-tune our model's specification, we also check for potential interactions, specifically those between between smoker and the other variables, in order to better understand its effect on birthweight. So we fit an unrestricted model with all the different interactions of smoker and find the only individually significant interaction is smoker*unmarried, with t-value of 2.652 and p-value of 0.00804. We want to check if we can exclude all the insignificant interactions from the unrestricted model using a F-test.
+For our test, $H_{0}$ : $\delta_{smoker*nprevist}$ = 0, $\delta_{smoker*tripre1}$ = 0, 
+$\delta_{smoker*tripre2}$ = 0, $\delta_{smoker*tripre3}$ = 0, and $H_{A}$: $H_{0}$ is not true. The F-statistic's distribution under the null is the F random variable with (q = 4, n-k-1 = 288) degrees of freedom. We get a F-statistic of 0.9227 with p-value of 0.4496, so we fail to reject $H_{0}$ at the 5% and 10% significance levels, and conclude that other interactions are jointly insignificant and can be dropped.
+
+
+```{r, echo = FALSE, results = "hide"}
+# Fit unrestricted model to test for interactions between smoker and other variables
+model.unrestricted = lm(birthweight ~ smoker + unmarried + nprevist + tripre1 + tripre2 + tripre3 + smoker*nprevist + smoker*unmarried + smoker*tripre1 + smoker*tripre2 + smoker*tripre3, data = bw.data)
+summary(model.unrestricted)
+
+# Fit a model excluding insignificant interactions
+model5 = lm(birthweight ~ smoker + unmarried + nprevist + tripre1 + tripre2 + tripre3 + smoker*unmarried, data = bw.data)
+
+# F-test for excluding all individually insignificant interactions
+anova(model5, model.unrestricted, test = "F")
+```
+
+Now, we have our final selected model. We include an interaction term between smoker and unmarried, which will affect our interpretation. This interaction means that the coefficients to smoker and unmarried variables individually no longer represent unique effects. The effect of one on smoking will depend on the value of the other. 
+
+```{r, echo = FALSE, fig.width = 6, fig.height = 3}
+# Final model
+final.mod = lm(birthweight ~ smoker + unmarried + nprevist + tripre1 + tripre2 + tripre3 + smoker*unmarried, data = bw.data)
+summary(final.mod)
+
+# Diagnostics for Final Model
+par(mfrow = c(1,3))
+plot(fitted(final.mod), resid(final.mod), pch = ".", main = "Residuals vs Fitted", xlab = "Fitted Values", ylab = "Residual Values")
+abline(h = 0, lty = 'dotdash', col = 'red')
+
+hist(final.mod$residuals)
+qqnorm(residuals(final.mod), pch= ".")
+qqline(residuals(final.mod))
+```
+
+Looking at the residuals vs fitted plot for our final model, we see that regression assumptions of residuals having a mean of zero and being uncorrelated are met, but that the variance of the residuals might not be constant. Also, a histogram of the residuals and Normal Q-Q Plot shows the assumption of normality is violated, possibly due to influential outliers.
+
+
+Lastly, we want to run a heteroskedasticity test, in order to see if the final model in fact does violate the homoskedasticity assumption. 
+
+```{r, echo = FALSE}
+# Run a heteroskedasticity test
+library(car)
+ncvTest(final.mod)
+```
+
+Running the NCV test, we obtain a Chisquare value of 46.129 and p-value of 1.107e-11, indicating significance at the 5% level, so we reject $H_{0}$ of constant variance of residuals and accept $H_{A}$ of heteroskedasticity. This confirms our suspicion from our earlier diagnostics.
+
+# Conclusions
+
+Based on our final model, we find that smoking has a significant impact on infant birthweight. Specifically, the t-statistic for smoking in our final model is extremely negative with a coefficient of around -231. Note that since we also have an interaction term between smoker and unmarried, we interpret the coefficient to smoker as the expected decrease in birthweight (-231 grams) of a smoker vs. nonsmoker if unmarried = 0 (meaning the are unmarried).
+
+The interaction term between smoker and unmarried is also worth mentioning. We find that there is a significant postive coefficient to this interaction which means that the effect of smoking on birthweight is different for unmarried/married people (or vice versa). 
+
+Lastly, we must be careful with our final conclusions. since we find that there is heteroskedasticity in our model. Because homoskedasticity is a requirement for our regression, we should take our result with a grain of salt.
