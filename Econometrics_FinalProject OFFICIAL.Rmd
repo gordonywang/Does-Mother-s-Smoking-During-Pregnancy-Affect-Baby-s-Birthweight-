@@ -1,5 +1,5 @@
 ---
-title: "Econometrics_FinalProject"
+title: "Does Mother's Smoking During Pregnancy Affect Baby's Birthweight?"
 author: "David Hua; Gordon Wang"
 date: "May 12, 2018"
 output:
@@ -8,8 +8,6 @@ output:
   word_document: default
 ---
 
-
-# 73-274 Econometrics I Final Project
 
 # Introduction
 
@@ -143,3 +141,4 @@ Based on our final model, we find that smoking has a significant impact on infan
 The interaction term between smoker and unmarried is also worth mentioning. We find that there is a significant postive coefficient to this interaction which means that the effect of smoking on birthweight is different for unmarried/married people (or vice versa). 
 
 Lastly, we must be careful with our final conclusions. since we find that there is heteroskedasticity in our model. Because homoskedasticity is a requirement for our regression, we should take our result with a grain of salt.
+
