@@ -1,0 +1,189 @@
+---
+title: "Code for 73274 Econometrics 1 Final Project"
+author: "Gordon Wang"
+date: "May 11, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+# Read in data
+library(foreign)
+bw.data = read.dta("birthweight_smoking.dta")
+
+# Check for NAs
+sum(is.na(bw.data))
+
+# Data summary
+dim(bw.data)
+summary(bw.data)
+```
+
+
+# Univariate EDA
+```{r}
+# 1-Dimensional EDA on Birthweight and Smoking, the main variables of interest
+par(mfrow = c(2, 2))
+hist(bw.data$birthweight, main = "Distribution of Infant's Birthweight", xlab = "Birthweight of Infant (g)", ylab = "Frequency", col = "red")
+
+smoker_categories = table(as.factor(bw.data$smoker))
+names(smoker_categories) = c("Didn't Smoke", "Smoked")
+smoker_categories
+barplot(smoker_categories, main = "Barplot of Mother Smoking Variable", xlab = "Smoked During Pregnancy", ylab = "Frequency")
+
+
+# 1-Dimensional EDA on Mother's Attributes
+hist(bw.data$age, main = "Distribution of Mother's Age", xlab = "Age", ylab = "Frequency", col = "blue")
+
+hist(bw.data$educ, main = "Distribution of Mother's Education", xlab = "Education (years)", ylab = "Frequency", col = "cornflowerblue")
+
+unmarried_categories = table(as.factor(bw.data$unmarried))
+names(unmarried_categories) = c("Married", "Unmarried")
+unmarried_categories
+barplot(unmarried_categories, main = "Barplot of Mother Unmarried", xlab = "Mother's Marriage Status", ylab = "Frequency")
+
+
+# 1-Dimensional EDA on This Pregnancy
+alcohol_categories = table(as.factor(bw.data$alcohol))
+names(alcohol_categories) = c("No Alcohol", "Alcohol")
+alcohol_categories
+barplot(alcohol_categories, main = "Barplot of Alcohol", xlab = "Drank Alcohol During Pregnancy", ylab = "Frequency")
+
+
+hist(bw.data$drinks, main = "Distribution of Drinks", xlab = "Number of Drinks/Week", ylab = "Frequency", col = "orange")
+drinks_categories = table(as.factor(bw.data$drinks))
+drinks_categories
+barplot(drinks_categories, main = "Barplot of Number of Drinks/Week", xlab = "Drinks/Week", ylab = "Frequency")
+
+tripre1_categories = table(as.factor(bw.data$tripre1))
+names(tripre1_categories) = c("No", "Yes")
+tripre1_categories
+barplot(tripre1_categories, main = "Barplot of Tripre1", xlab = "1st Prenatal Care Visit in 1st Trimester", ylab = "Frequency")
+
+tripre2_categories = table(as.factor(bw.data$tripre2))
+names(tripre2_categories) =  c("No", "Yes")
+tripre2_categories
+barplot(tripre2_categories, main = "Barplot of Tripre2", xlab = "1st Prenatal Care Visit in 2nd Trimester", ylab = "Frequency")
+
+tripre3_categories = table(as.factor(bw.data$tripre3))
+names(tripre3_categories) =  c("No", "Yes")
+tripre3_categories
+barplot(tripre3_categories, main = "Barplot of Tripre3", xlab = "1st Prenatal Care Visit in 3rd Trimester", ylab = "Frequency")
+
+tripre0_categories = table(as.factor(bw.data$tripre0))
+names(tripre0_categories) =  c("No", "Yes")
+tripre0_categories
+barplot(tripre0_categories, main = "Barplot of Tripre0", xlab = "No Prenatal Visits", ylab = "Frequency")
+
+hist(bw.data$nprevist, main = "Distribution of Prenatal Visits", xlab = "Total Number of Prenatal Visits", ylab = "Frequency", col = "blue")
+```
+
+# Bivariate EDA
+```{r}
+# Boxplot for variables of interest
+boxplot(bw.data$birthweight ~ bw.data$smoker, names = c("Didn't Smoke", "Smoked"), main = "Birthweight vs Smoking", xlab = "Mother Smoking During Pregnancy", ylab = "Infant Birthweight (g)", col = "slategray4")
+
+# Pairs plot for continuous variables
+pairs(bw.data[,c(7,10,11,1,12)], pch = ".")
+```
+
+
+# Regressions
+
+# Regressing Y on main x of interest
+```{r}
+# Regressing Birthweight on Smoker
+model1 = lm(birthweight ~ smoker, data = bw.data)
+summary(model1)
+```
+
+# Controlling for All other variables
+```{r}
+# Start with all regressors in the model
+model.full = lm(birthweight ~ ., data = bw.data)
+summary(model.full)
+
+# Drop tripre0 from model to avoid dummy variable trap
+model2 = lm(birthweight ~ .-tripre0, data = bw.data)
+summary(model2)
+```
+
+Tripre0 has a NA slope coefficient. This is because of the dummy variable trap caused by perfect collinearity among tripre1, tripre2, tripre3, and tripre0. The number of 0 values for tripre0 equals the sum of 1 values for tripre1, tripre2, and tripre3. Perfect collinearity is a violation of Multiple Linear Regression Assumption 3. Thus, the decision was made to drop tripre0 from the model.
+
+
+```{r}
+# Eliminate redundacy from the model by dropping alcohol or drinks
+model3 = lm(birthweight ~.-tripre0-alcohol,data= bw.data)
+summary(model3)
+
+model3b = lm(birthweight ~. -tripre0-drinks, data = bw.data)
+summary(model3b)
+```
+
+I had to drop either the drinks or alcohol variable because of redundancy. The number of mothers who didn't drink once per week is equal to the number of mothers who didn't drink alcohol, coded as 0. To decide which variable to drop, I compared the multiple R-squared values of the model upon excluding one or the other, and found out that dropping alcohol resulted in a higher value than dropping drinks. Thus, I decided to drop the alcohol variable from the model.
+
+```{r}
+# Check variance inflation factors of model
+library(car)
+vif(model3)
+
+# Fit model without highly correlated predicters
+model.reduced = lm(birthweight ~.-tripre0-alcohol-tripre1-tripre2-tripre3,data = bw.data)
+summary(model.reduced)
+
+# Test for joint significance of tripre1, tripre2, and tripre3
+anova(model.reduced, model3, test = "F")
+```
+
+```{r}
+# Try dropping insignificant predictors from model
+model4 = lm(birthweight ~ smoker + unmarried + nprevist + tripre1 + tripre2 + tripre3, data = bw.data)
+summary(model4)
+
+# Compare Model4 to previous model using F-test
+anova(model4, model3, test = "F")
+```
+
+```{r}
+# Test for interactions
+model.unrestricted = lm(birthweight ~ smoker + unmarried + nprevist + tripre1 + tripre2 + tripre3 + smoker*nprevist + smoker*unmarried + smoker*tripre1 + smoker*tripre2 + smoker*tripre3, data = bw.data)
+summary(model.unrestricted)
+
+# F-Test for whether smoker's interactions are jointly significant
+anova(model4, model.unrestricted, test = "F")
+
+# Fit a model only including the significant interaction
+model5 = lm(birthweight ~ smoker + unmarried + nprevist + tripre1 + tripre2 + tripre3 + smoker*unmarried, data = bw.data)
+summary(model5)
+
+# F-test for excluding all individually insignificant interactions
+anova(model5, model.unrestricted, test = "F")
+```
+
+```{r}
+# Selected model, without accounting for diagnostics
+final.mod = lm(birthweight ~ smoker + unmarried + nprevist + tripre1 + tripre2 + tripre3 + smoker*unmarried, data = bw.data)
+summary(final.mod)
+
+# Diagnostics for Chosen Model
+plot(fitted(final.mod), resid(final.mod), pch = ".", main = "Residuals vs Fitted", xlab = "Fitted Values", ylab = "Residual Values")
+abline(h = 0, lty = 'dotdash', col = 'red')
+
+hist(final.mod$residuals)
+qqnorm(residuals(final.mod), pch= ".")
+qqline(residuals(final.mod))
+
+
+plot(final.mod, pch = ".")
+```
+
+
+```{r}
+# Run a heteroskedasticity test
+library(car)
+ncvTest(final.mod)
+```
+P-value less than 0.05, so we reject the null hypothesis of that the variance of the residuals is constant and infer that heteroskedasticity is present.
+
+
