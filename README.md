@@ -1,4 +1,4 @@
-# Does-Smoking-During-Pregnancy-Affect-Birthweight-of-Baby-
+# Does-Mother's-Smoking-During-Pregnancy-Affect-Baby's-Birthweight-?-
 Final Project | 73-274: Econometrics I | Spring 2018
 
 • Led team of 2 by conducting EDA and multiple linear regression analysis on small data set of 3,000 observations to examine whether a mother's smoking during pregnancy will affect baby's birthweight, controlling for other factors/interactions.
