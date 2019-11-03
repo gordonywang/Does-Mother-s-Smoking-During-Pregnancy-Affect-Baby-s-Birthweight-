@@ -1,9 +1,9 @@
 # Does-Smoking-During-Pregnancy-Affect-Birthweight-of-Baby-
 Final Project | 73-274: Econometrics I | Spring 2018
 
-• Led team of 2 by conducting EDA and regression analysis on small data set of 3,000 observations to examine whether a mother's smoking during pregnancy will affect baby's birthweight.
+• Led team of 2 by conducting EDA and regression analysis controlling for other factors/interactions, on small data set of 3,000 observations to examine whether a mother's smoking during pregnancy will affect baby's birthweight.
 
-• Fitted to data multiple regressions controlling for other factors and interactions terms and used hypothesis testing with t-tests and F-tests for model selection to determine final model's form.
+• Utilized hypothesis testing with t-tests and F-tests to perform model selection.
 
 • Wrote 4 page report displaying main regressions, summarizing analysis, and highlighting primary results.
 
